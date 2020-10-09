@@ -88,14 +88,25 @@ class CustomMetrics(keras.callbacks.Callback):
         plt.draw()
         plt.pause(0.001)
 
+def penalized_loss(y_true, y_pred):
+        print(y_true.shape)
+        print(y_true)
+        print(y_pred.shape)
+        print(y_pred)
+        print('---')
+        d = y_pred
+        return tf.reduce_mean(tf.square(d))
 
-USE_EMOTIONS = False
+
+
+print(tf.__version__)
+USE_EMOTIONS = True
 
 (train_images, train_labels), (test_images, test_labels) = datasets.mnist.load_data()
 train_emotions = np.load('emotions_labels.npy')
 
 train_images, test_images = train_images / 255.0, test_images / 255.0
-
+train_labels = to_categorical(train_labels, num_classes=10)
 
 input_1 = Input(shape=(28,28,1))
 x = layers.Conv2D(32, (3,3), activation='relu')(input_1)
@@ -120,19 +131,20 @@ else:
 model.summary()
 
 model.compile(optimizer='adam',
-              loss='sparse_categorical_crossentropy',
-              metrics=['accuracy'])
+              loss=penalized_loss,
+              metrics=['accuracy'],
+              run_eagerly=True)
 
 train_images = np.expand_dims(train_images, axis=3)
 test_images = np.expand_dims(test_images, axis=3)
 
 if USE_EMOTIONS:
-    history = model.fit(train_images, [train_labels, train_emotions], batch_size=16, epochs=10, validation_data=(test_images,  [test_labels, np.zeros_like(test_labels)]))
-    np.savetxt('cnn_target-digit_emotion.txt',
+    history = model.fit(train_images, [train_labels, train_emotions], batch_size=2, epochs=10, validation_data=(test_images,  [test_labels, np.zeros_like(test_labels)]))
+    np.savetxt('cnn.txt',
                np.column_stack([history.history['dense_2_accuracy'], history.history['val_dense_2_accuracy']]))
 else:
-    history = model.fit(train_images, train_labels,validation_data=(test_images,  test_labels), batch_size=16, epochs=10)
-    np.savetxt('cnn_baseline.txt',
+    history = model.fit(train_images, train_labels, validation_data=(test_images,  test_labels), batch_size=2, epochs=10)
+    np.savetxt('cnn_custom_loss.txt',
                np.column_stack([history.history['accuracy'], history.history['val_accuracy']]))
 
 
