@@ -7,7 +7,7 @@ from scipy.io import savemat
 from data_loading.mnist import load_mnist_image_format_3_splits_normalized
 from data_loading.mnist import save_mnist_images_to_disk
 from models.simple_models import CNN_32C5S1_P2_64C5S1_P2_F256_F2_out_F2
-from losses import SparseCategCrossEntropy as SCCE_loss, CenterLoss
+from losses import SparseCategCrossEntropy as SCCE_loss, CenterLoss, EmoLoss
 from losses import SparseCategCrossEntropy_Emotions as SCCE_EMO_loss
 from aux_functions import getLossPerSample, getFeaturesPerSample, createExperimentNameFromParams
 
@@ -15,6 +15,52 @@ import matplotlib.patches as mpatches
 from create_initial_emotions_mnist import generate_colors
 import matplotlib.pyplot as plt
 plt.ion()
+
+def visualizeConvWeights(model, layer_n, n_filters=1, n_channels=1):
+
+    # retrieve weights from the second hidden layer
+    filters, biases = model.layers[layer_n].get_weights()
+    # normalize filter values to 0-1 so we can visualize them
+    f_min, f_max = filters.min(), filters.max()
+    #filters = (filters - f_min) / (f_max - f_min)
+    # plot first few filters
+
+    grid_size = [int(np.sqrt(n_channels))+1, int(np.sqrt(n_channels))+1]
+    for i in range(n_filters):
+        # get the filter
+        f = filters[:, :, :, i]
+        fig = plt.figure(i)
+        ix = 1
+        # plot each channel separately
+        for j in range(n_channels):
+            # specify subplot and turn of axis
+            ax = plt.subplot(grid_size[0], grid_size[1], ix)
+            ax.set_xticks([])
+            ax.set_yticks([])
+            # plot filter channel in grayscale
+            ax.imshow(f[:, :, j], cmap='gray', vmin=-1, vmax=1)
+            ix += 1
+    # show the figure
+    plt.show()
+
+def visualizeDenseWeights(model, layer_n):
+
+    # retrieve weights from the second hidden layer
+    filters, biases = model.layers[layer_n].get_weights()
+    # normalize filter values to 0-1 so we can visualize them
+    f_min, f_max = filters.min(), filters.max()
+    #filters = (filters - f_min) / (f_max - f_min)
+    # plot first few filters
+    filters = np.transpose(filters)
+
+    plt.figure()
+    plt.imshow(filters[:,:200], cmap='gray', vmin=-1, vmax=1, extent=[0,2,0,200], aspect='auto')
+    plt.tight_layout()
+
+    # show the figure
+    plt.show()
+    plt.draw()
+    plt.pause(0.001)
 
 def debugLearningProgress(model, train_dataset, loss_per_sample):
 
@@ -38,7 +84,8 @@ def debugLearningProgress(model, train_dataset, loss_per_sample):
 
     colors_bank = generate_colors(10)
     # colors_bank = np.random.rand(10,3)
-    plt.figure(1)
+    plt.close('all')
+    plt.figure()
     label = []
     for i in range(10):
         plt.scatter(intermediate_output[samples_label == i, 0], intermediate_output[samples_label == i, 1], s=10,
@@ -64,7 +111,7 @@ params['DATASET'] ='MNIST'
 params['BATCH_SIZE'] = 16
 params['SHUFFLE_BUFFER_SIZE'] = 100
 params['NUM_EPOCHS'] = 100
-params['LEARNING_RATE'] = 1e-3
+params['LEARNING_RATE'] = 1e-4
 params['TYPE'] = 'baseline'
 params['DEBUG'] = True
 experiment_name = os.path.join('experiments', createExperimentNameFromParams(params))
@@ -82,14 +129,15 @@ epoch_acc_val = tf.keras.metrics.SparseCategoricalAccuracy()
 
 optimizer = tf.keras.optimizers.Adam(learning_rate=params['LEARNING_RATE'])
 
-@tf.function
-def train_step(x, y, centers_f, num_classes):
+#@tf.function
+def train_step(x, y, centers_f, cmat, num_classes):
 
     with tf.GradientTape() as tape:
         logits = model(x, training=True)
         loss_value_ssce_train, dummy1 = SCCE_loss(y, logits[0], num_classes)
-        loss_value_emo_train, centers_f = CenterLoss(logits[1], y, centers_f, num_classes, 0.01)
-        loss_value_train = loss_value_ssce_train + loss_value_emo_train
+        #loss_value_emo_train, dummy2, cmat, centers_f = EmoLoss(y, logits[0], cmat, logits[1], centers_f, num_classes)
+        #loss_value_center_train, centers_f = CenterLoss(logits[1], y, centers_f, num_classes, 0.5)
+        loss_value_train = loss_value_ssce_train #+ 0.5*loss_value_emo_train
         #loss_per_sample[emo.numpy()] = loss_per_sample_batch_f
 
     # calculate gradients
@@ -102,7 +150,7 @@ def train_step(x, y, centers_f, num_classes):
     epoch_acc_train.update_state(y, logits[0])
     epoch_loss_train.update_state(loss_value_train)
 
-    return centers_f
+    return centers_f, cmat
 
 @tf.function
 def test_step(x, y, num_classes):
@@ -146,6 +194,8 @@ output_dim = len(np.unique(train_labels))
 num_classes = output_dim
 model = CNN_32C5S1_P2_64C5S1_P2_F256_F2_out_F2(input_dim, output_dim)
 
+#visualizeConvWeights(model, 3, 4, 32)
+#visualizeDenseWeights(model, 6)
 
 ######################################
 #              TRAIN LOOP
@@ -159,6 +209,7 @@ val_accuracy_results = []
 
 centers = tf.zeros([10, 2], tf.float32)
 
+
 for epoch in range(params['NUM_EPOCHS']):
 
     data_epoch = {'intermediate_output_train': [], 'samples_label_train': [], 'loss_per_sample_train': [],
@@ -167,10 +218,12 @@ for epoch in range(params['NUM_EPOCHS']):
     print("\nStart of epoch %d" % (epoch,))
     start_time = time.time()
 
+    cmat = tf.zeros([10, 10], tf.float32)
+
     # Training loop - using batches of BATCH_SIZE
     for step, (x, y, tidx) in enumerate(train_dataset):
 
-        train_step(x, y, centers, num_classes)
+        centers, cmat = train_step(x, y, centers, cmat, num_classes)
 
         # Log every 200 batches.
         if step % 500 == 0:
@@ -178,6 +231,8 @@ for epoch in range(params['NUM_EPOCHS']):
                   (step, train_dataset.cardinality().numpy(), epoch_loss_train.result(), epoch_acc_train.result()))
 
     if params['DEBUG']:
+        #visualizeDenseWeights(model, 6)
+        #visualizeDenseWeights(model, 7)
 
         data_epoch['intermediate_output_train'], data_epoch['samples_label_train'] = getFeaturesPerSample(model, train_dataset)
         # compute loss of training samples
@@ -192,7 +247,7 @@ for epoch in range(params['NUM_EPOCHS']):
         data_epoch['loss_per_sample_val'] = getLossPerSample(model, val_dataset, num_val_samples, num_classes)
 
 
-        savemat(os.path.join(experiment_name,'debug_data_epoch_{0}.mat'.format(epoch)), data_epoch)
+        #savemat(os.path.join(experiment_name,'debug_data_epoch_{0}.mat'.format(epoch)), data_epoch)
 
 
     # Run a validation loop at the end of each epoch.
