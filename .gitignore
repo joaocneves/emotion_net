@@ -1,6 +1,9 @@
-
 venvcpu/
-
 venvgpu/
-
 __pycache__/
+venvgpu\*
+pycache\*
+venvgpu/
+__pycache__/
+.idea/
+experiments/
