@@ -1,14 +1,14 @@
-from keras.models import  Model
-from keras.layers import Input, Dense, Conv2D, MaxPooling2D, Flatten
-from keras import backend as k
-from keras import losses
-from keras import datasets
-from keras.utils import to_categorical
+from tensorflow.keras.models import Model
+from tensorflow.keras.layers import Input, Dense, Conv2D, MaxPooling2D, Flatten
+from tensorflow.keras import backend as k
+from tensorflow.keras import losses
+from tensorflow.keras import datasets
+from tensorflow.keras.utils import to_categorical
 import numpy as np
 import tensorflow as tf
 from math import ceil, floor
-from sklearn.metrics import mean_squared_error
-from math import sqrt
+#from sklearn.metrics import mean_squared_error
+#from math import sqrt
 
 # model = Sequential()
 # model.add(Dense(12, input_dim=8, kernel_initializer='uniform', activation='relu'))
@@ -54,8 +54,6 @@ def myfit(model=None,
     n_batches = ceil(n_samples/batch_size)
 
     for ep in range(epochs):
-
-
 
         for b in range(n_batches):
 
@@ -135,8 +133,8 @@ if __name__ == "__main__":
                   metrics=['accuracy'])
 
     # Begin TensorFlow
-    sess = tf.InteractiveSession()
-    sess.run(tf.initialize_all_variables())
+    sess = tf.compat.v1.Session()
+    sess.run(tf.compat.v1.initialize_all_variables())
     myfit(model=model, x=train_images, y=train_labels, batch_size=16, learning_rate=0.01, learning_decay=0.95, epochs=50)
 
 

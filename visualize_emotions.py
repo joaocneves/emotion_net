@@ -20,32 +20,17 @@ def generate_colors(n):
 
     return colors_bank[:n,:]
 
-def create_initial_emotions(samples_feat, samples_label, epoch):
+def visualize_emotions(samples_label, epoch):
 
     """ Asserts """
     if len(samples_label.shape) == 1:
         samples_label = np.expand_dims(samples_label, axis=1)
 
-    """ Normalize Data """
-    sc = StandardScaler()
-    samples_feat_norm = sc.fit_transform(samples_feat)
-
-    """ Reduce Data  Dimensionality """
-    pca_model = PCA(n_components=50)
-    samples_feat_pca = pca_model.fit_transform(samples_feat_norm)
-    print('Explained variation: {}'.format(np.sum(pca_model.explained_variance_ratio_)))
-    print('Explained variation per principal component: {}'.format(pca_model.explained_variance_ratio_))
 
     """ Learn Data Correlations (TSNE) """
     tmpfilename = 'samples_feat_tsne_{0}.txt'.format(epoch)
     if os.path.isfile(tmpfilename):
         samples_feat_tsne = np.loadtxt(tmpfilename)
-    else:
-        tsne = TSNE(n_jobs=4)
-        samples_feat_tsne = tsne.fit_transform(samples_feat_pca)
-        samples_feat_tsne = (samples_feat_tsne - samples_feat_tsne.min(axis=0)) / (
-                    samples_feat_tsne.max(axis=0) - samples_feat_tsne.min(axis=0))
-        #np.savetxt(tmpfilename, samples_feat_tsne)
 
     """ Estimate Density in the Manifold Space """
     tx = samples_feat_tsne[:, [0]]
@@ -89,7 +74,7 @@ if __name__ == "__main__":
 
     samples_feat = train_images_features
     sample_labels = train_labels
-    emotion_idx, emotion_clusters, samples_feat_tsne = create_initial_emotions(samples_feat, sample_labels, 0)
+    emotion_idx, emotion_clusters, samples_feat_tsne = visualize_emotions(sample_labels, 1)
 
 
     import matplotlib.pyplot as plt
@@ -117,6 +102,3 @@ if __name__ == "__main__":
 
     plt.legend(handles=label)
     plt.show()
-
-    np.save('emotions_labels', emotion_idx)
-    np.save('emotion_clusters', emotion_clusters)

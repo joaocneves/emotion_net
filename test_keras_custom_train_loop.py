@@ -1,11 +1,11 @@
 import tensorflow as tf
 import numpy as np
-import keras.backend as K
+import tensorflow.keras.backend as K
 from tqdm import tqdm
-from keras.models import Model
-from keras.optimizers import Adam
-from keras.layers import Input, Dense
-from keras import datasets, layers
+from tensorflow.keras.models import Model
+from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.layers import Input, Dense
+from tensorflow.keras import datasets, layers
 
 
 (train_images, train_labels), (test_images, test_labels) = datasets.mnist.load_data()
@@ -15,7 +15,7 @@ test_images = np.expand_dims(test_images, axis=3)
 
 # Setting seeds for reproducibility
 np.random.seed(0)
-tf.set_random_seed(0)
+tf.random.set_seed(0)
 
 # Dataset: given 2 numbers, predict the sum
 # Sum 2 numbers from 0 to 10 dataset
@@ -102,7 +102,7 @@ for epoch in range(epochs):
 
         # To tensors, input of
         # K.function must be tensors
-        sample = K.constant(sample, name = 'img_input')
+        sample = K.constant(sample, name='img_input')
         target = K.constant(target)
 
         # Running the train graph
@@ -113,7 +113,7 @@ for epoch in range(epochs):
         loss_train_mean = np.mean(losses_train)
 
         # Update progress bar
-        pbar.set_description('Train Loss: %.3f' % loss_train_mean)
+        pbar.set_description('train Loss: %.3f' % loss_train_mean)
 
     # Testing
     losses_test = []

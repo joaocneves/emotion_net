@@ -1,10 +1,12 @@
 
 import numpy as np
-import keras
-from keras import datasets, layers, models
-from keras.models import Model
-from keras.layers import Input, Dense
+from tensorflow import keras
+from tensorflow.keras import datasets, layers, models
+from tensorflow.keras.models import Model
+from tensorflow.keras.layers import Input, Dense
+from tensorflow.keras.utils import to_categorical
 import matplotlib.pyplot as plt
+import tensorflow as tf
 #from create_initial_emotions_mnist import create_initial_emotions, generate_colors
 
 class NewCallback(keras.callbacks.Callback):
@@ -87,7 +89,7 @@ class CustomMetrics(keras.callbacks.Callback):
         plt.pause(0.001)
 
 
-USE_EMOTIONS = True
+USE_EMOTIONS = False
 
 (train_images, train_labels), (test_images, test_labels) = datasets.mnist.load_data()
 train_emotions = np.load('emotions_labels.npy')

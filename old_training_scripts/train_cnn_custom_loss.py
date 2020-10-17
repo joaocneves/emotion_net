@@ -1,10 +1,10 @@
 
 import numpy as np
-import keras
-from keras import datasets, layers, models
-from keras.models import Model
-from keras.layers import Input, Dense
-from keras.utils import to_categorical
+from tensorflow import keras
+from tensorflow.keras import datasets, layers, models
+from tensorflow.keras.models import Model
+from tensorflow.keras.layers import Input, Dense
+from tensorflow.keras.utils import to_categorical
 import matplotlib.pyplot as plt
 import tensorflow as tf
 #from create_initial_emotions_mnist import create_initial_emotions, generate_colors
@@ -88,19 +88,19 @@ class CustomMetrics(keras.callbacks.Callback):
         plt.draw()
         plt.pause(0.001)
 
-def penalized_loss(emotions):
-
-
-    def loss(y_true, y_pred):
-        print(emotions.shape)
-        d = (y_true - y_pred)
+def penalized_loss(y_true, y_pred):
+        print(y_true.shape)
+        print(y_true)
+        print(y_pred.shape)
+        print(y_pred)
+        print('---')
+        d = y_pred
         return tf.reduce_mean(tf.square(d))
 
 
-    return loss
 
-
-USE_EMOTIONS = False
+print(tf.__version__)
+USE_EMOTIONS = True
 
 (train_images, train_labels), (test_images, test_labels) = datasets.mnist.load_data()
 train_emotions = np.load('emotions_labels.npy')
@@ -131,8 +131,9 @@ else:
 model.summary()
 
 model.compile(optimizer='adam',
-              loss=[penalized_loss(emotions=train_emotions)],
-              metrics=['accuracy'])
+              loss=penalized_loss,
+              metrics=['accuracy'],
+              run_eagerly=True)
 
 train_images = np.expand_dims(train_images, axis=3)
 test_images = np.expand_dims(test_images, axis=3)
